@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Hidrográfico Madrid</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <header class="hero">
+    <div class="overlay"></div>
+    <div class="hero-content">
+      <p class="eyebrow">Comunidad de Madrid · Series temporales</p>
+      <h1>Seguimiento de agua embalsada</h1>
+      <p class="subtitle">Dashboard exploratorio para evaluar el riesgo de sequía en 2022 a partir de históricos mensuales.</p>
+      <div class="hero-images">
+        <img src="https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=800&q=80" alt="Embalse" />
+        <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80" alt="Río" />
+        <img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80" alt="Medidor de agua" />
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="cards" aria-label="Indicadores resumen">
+      <article class="card">
+        <p class="label">Media histórica mensual</p>
+        <p class="value" id="historical-avg">--</p>
+        <p class="hint">Promedio de todos los meses anteriores a 2022 (hm³).</p>
+      </article>
+      <article class="card">
+        <p class="label">Media mensual 2022</p>
+        <p class="value" id="avg-2022">--</p>
+        <p class="hint">Promedio de los meses disponibles en 2022 (hm³).</p>
+      </article>
+      <article class="card">
+        <p class="label">Diferencia vs. histórico</p>
+        <p class="value" id="diff-percent">--</p>
+        <p class="hint">Porcentaje por encima o por debajo de la media histórica.</p>
+      </article>
+      <article class="card accent" id="risk-card">
+        <p class="label">Indicador de sequía 2022</p>
+        <p class="value" id="risk-level">--</p>
+        <p class="hint" id="risk-hint">Evaluando datos...</p>
+      </article>
+    </section>
+
+    <section class="chart-section">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Evolución temporal</p>
+          <h2>Volumen total mensual</h2>
+          <p class="section-subtitle">Curva de agua embalsada mes a mes para todos los años disponibles.</p>
+        </div>
+      </div>
+      <canvas id="time-series-chart" height="120"></canvas>
+    </section>
+
+    <section class="chart-section grid-2">
+      <div>
+        <div class="section-header">
+          <p class="eyebrow">Comparativa</p>
+          <h2>2022 vs media histórica</h2>
+          <p class="section-subtitle">Promedios mensuales comparados con 2022 para detectar posibles déficits.</p>
+        </div>
+        <canvas id="comparison-chart" height="140"></canvas>
+      </div>
+      <aside class="text-panel">
+        <h3>Contexto visual</h3>
+        <p>Imágenes de embalses y mediciones de agua para acompañar la lectura de los datos.</p>
+        <div class="stacked-images">
+          <img src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=900&q=80" alt="Presa" />
+          <img src="https://images.unsplash.com/photo-1473186578172-c141e6798cf4?auto=format&fit=crop&w=900&q=80" alt="Lago" />
+        </div>
+      </aside>
+    </section>
+
+    <section class="info">
+      <div>
+        <h3>Sobre los datos</h3>
+        <p>El CSV contiene registros mensuales de niveles de agua embalsada en distintos embalses de la Comunidad de Madrid. Las columnas incluyen el <strong>año</strong> (<em>year</em>), el <strong>mes</strong> (numérico o con nombre en español), la <strong>fecha</strong> completa cuando está disponible y varias columnas numéricas, cada una con el volumen de un embalse en <strong>hm³</strong>. Existe una columna <em>total</em>; si no está presente, el dashboard calcula la suma de todos los embalses para cada fila.</p>
+        <p>Los datos están agregados a nivel <strong>mensual y por embalse</strong>, de modo que cada fila representa el volumen de agua de todos los embalses en un mes concreto.</p>
+      </div>
+      <div>
+        <h3>Cómo interpretar las gráficas</h3>
+        <p>En la gráfica principal, cada punto representa el volumen total embalsado en un mes. Una curva descendente prolongada o valores de 2022 situados <strong>por debajo de la media histórica</strong> pueden sugerir riesgo de sequía.</p>
+        <p>La comparación de 2022 frente a la media histórica muestra, mes a mes, si los niveles se sitúan por encima (escenario favorable) o por debajo (escenario de alerta). Este es un enfoque heurístico, no una predicción perfecta.</p>
+      </div>
+      <div>
+        <h3>Conclusiones</h3>
+        <p id="conclusion-text">Cargando conclusiones a partir de los datos...</p>
+        <p>El indicador resume la diferencia porcentual entre 2022 y el promedio histórico: verde si 2022 está muy por encima, ámbar si es similar y rojo cuando hay déficit notable.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Dashboard hidrográfico · Comunidad de Madrid · Datos históricos de embalses</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
