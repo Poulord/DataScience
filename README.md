@@ -9,11 +9,21 @@ Dashboard web en HTML, CSS y JavaScript que analiza la serie temporal de agua em
 - `data/df_embalses_medio_limpio.csv`: dataset de volúmenes mensuales por embalse.
 
 ## Cómo ejecutar en un entorno virtual
-1. Clona el repositorio y abre la carpeta en tu editor (por ejemplo VS Code).
-2. Activa tu entorno virtual preferido (no es necesario instalar dependencias de Node; basta con un servidor estático). Opciones:
-   - VS Code: usa la extensión **Live Server** y abre `index.html`.
-   - Python (>=3.8): `python -m http.server 8000` y visita `http://localhost:8000/`.
-3. Asegúrate de que la carpeta `data/` permanece en la misma raíz que `index.html` para que la carga del CSV funcione correctamente.
+1. Crea y activa un entorno virtual de Python (ejemplo con `venv`):
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # En Windows: .venv\\Scripts\\activate
+   ```
+2. Instala las dependencias mínimas para analizar los datos o servir los ficheros:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Levanta un servidor estático para evitar bloqueos de CORS al leer el CSV:
+   ```bash
+   python -m http.server 8000
+   # luego visita http://localhost:8000/
+   ```
+4. Mantén la carpeta `data/` en la misma raíz que `index.html` para que la carga del CSV funcione correctamente.
 
 ## Lógica de sequía
 - Se calcula la media histórica mensual (excluyendo 2022).
@@ -24,9 +34,11 @@ Dashboard web en HTML, CSS y JavaScript que analiza la serie temporal de agua em
   - **Riesgo bajo**: media 2022 ≥ 90% del histórico.
 
 ## Visualizaciones
-- Evolución temporal del volumen total mensual.
-- Comparación de 2022 frente a la media histórica por mes.
-- Tarjetas con indicadores de medias y porcentaje de diferencia.
+- Tarjetas con medias, diferencia porcentual y nivel heurístico de sequía.
+- Un área compacta con controles para elegir entre:
+  - Evolución temporal del volumen total mensual.
+  - Comparación 2022 vs. media histórica.
+  - Barras de promedios mensuales (histórico vs. 2022).
 
 ## Notas
 - El dashboard usa Chart.js y Papa Parse desde CDNs, por lo que no requiere instalación adicional.
