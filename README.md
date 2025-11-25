@@ -8,7 +8,12 @@ Dashboard web en HTML, CSS y JavaScript que analiza la serie temporal de agua em
 - `script.js`: carga y limpieza del CSV, cálculo de indicadores y creación de gráficas con Chart.js.
 - `data/df_embalses_medio_limpio.csv`: dataset de volúmenes mensuales por embalse.
 
-## Cómo ejecutar en un entorno virtual
+## Por qué usar un entorno virtual
+- Aísla dependencias para que no contaminen otros proyectos ni el Python del sistema.
+- Facilita la reproducibilidad: todo el mundo instala exactamente las mismas versiones (ver `requirements.txt`).
+- Evita conflictos de paquetes globales que puedan romper el servidor local o los análisis con pandas.
+
+### Cómo crear y activar el entorno virtual
 1. Crea y activa un entorno virtual de Python (ejemplo con `venv`):
    ```bash
    python -m venv .venv
