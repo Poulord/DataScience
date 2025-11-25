@@ -18,7 +18,18 @@ const cards = {
   riskCard: document.getElementById('risk-card')
 };
 
+const chartDescription = document.getElementById('chart-description');
+const chartButtons = document.querySelectorAll('[data-view]');
+
+const chartHints = {
+  time: 'Curva mensual del volumen total embalsado.',
+  comparison: 'Superposición de la media histórica y los valores de 2022 para detectar desviaciones.',
+  monthly: 'Barras comparando la media histórica frente a los meses disponibles de 2022.'
+};
+
 let charts = {};
+let cachedRecords = [];
+let currentView = 'time';
 
 document.addEventListener('DOMContentLoaded', () => {
   loadCsv();
@@ -81,6 +92,7 @@ function sumEmbalses(row) {
 
 function renderDashboard(records) {
   const ordered = records.sort((a, b) => a.year === b.year ? a.month - b.month : a.year - b.year);
+  cachedRecords = ordered;
   const { historicalAvg, avg2022, diffPercent, risk } = computeIndicators(ordered);
 
   cards.historical.textContent = `${formatter.format(historicalAvg)} hm³`;
@@ -91,8 +103,8 @@ function renderDashboard(records) {
   cards.conclusion.textContent = risk.conclusion;
   cards.riskCard.style.background = risk.background;
 
-  buildTimeSeriesChart(ordered);
-  buildComparisonChart(ordered);
+  attachControls();
+  switchChart('time');
 }
 
 function computeIndicators(records) {
@@ -100,13 +112,7 @@ function computeIndicators(records) {
   const historicalYears = Object.keys(byYear).filter((y) => Number(y) !== 2022);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  const monthlyHistoricalAvg = months.map((month) => {
-    const vals = historicalYears
-      .map((y) => byYear[y]?.filter((r) => r.month === month).map((r) => r.total) || [])
-      .flat();
-    return average(vals);
-  });
-
+  const monthlyHistoricalAvg = computeMonthlyHistoricalAverage(byYear, historicalYears, months);
   const avgHistorical = average(monthlyHistoricalAvg.filter((v) => !Number.isNaN(v)));
   const values2022 = (byYear[2022] || []).map((r) => r.total);
   const avg2022 = average(values2022);
@@ -123,18 +129,11 @@ function computeIndicators(records) {
   if (ratio <= 0.75) {
     risk = {
       label: 'Riesgo alto',
-      message: '2022 está muy por debajo de la media histórica.',
-      background: 'linear-gradient(145deg, #c31432, #240b36)',
-      conclusion: 'Los niveles de 2022 quedan claramente por debajo del histórico, indicando un riesgo alto de sequía si la tendencia continúa.'
+      message: '2022 está claramente por debajo del histórico.',
+      background: 'linear-gradient(145deg, #c31432, #7a0f23)',
+      conclusion: 'Los volúmenes de 2022 son mucho menores que la media; conviene activar medidas preventivas de sequía.'
     };
-  } else if (ratio <= 0.9) {
-    risk = {
-      label: 'Riesgo medio',
-      message: '2022 presenta ligeros déficits frente a la media.',
-      background: 'linear-gradient(145deg, #f7b733, #fc8a17)',
-      conclusion: 'Se observan déficits moderados en 2022 respecto al histórico, por lo que existe un riesgo moderado de sequía.'
-    };
-  } else {
+  } else if (ratio >= 0.9) {
     risk = {
       label: 'Riesgo bajo',
       message: '2022 está por encima o alineado con el histórico.',
@@ -161,122 +160,158 @@ function average(arr) {
   return sum / arr.length;
 }
 
-function buildTimeSeriesChart(records) {
-  const ctx = document.getElementById('time-series-chart');
-  const labels = records.map((r) => `${r.year}-${String(r.month).padStart(2, '0')}`);
-  const totals = records.map((r) => r.total);
-
-  destroyChart('time');
-  charts.time = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Total embalsado (hm³)',
-        data: totals,
-        borderColor: '#0a6ebd',
-        backgroundColor: 'rgba(10, 110, 189, 0.08)',
-        tension: 0.25,
-        fill: true,
-        pointRadius: 2.5,
-        pointBackgroundColor: '#0a6ebd'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          ticks: {
-            callback: (val) => `${val} hm³`
-          },
-          grid: { color: 'rgba(82, 117, 138, 0.15)' }
-        },
-        x: {
-          grid: { display: false },
-          ticks: { autoSkip: true, maxTicksLimit: 12 }
-        }
-      },
-      plugins: {
-        legend: { display: true },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => `${formatter.format(ctx.parsed.y)} hm³`
-          }
-        }
-      }
-    }
-  });
-}
-
-function buildComparisonChart(records) {
-  const ctx = document.getElementById('comparison-chart');
-  const byYear = groupBy(records, 'year');
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
-
-  const historicalYears = Object.keys(byYear).filter((y) => Number(y) !== 2022);
-  const monthlyHistoricalAvg = months.map((month) => {
+function computeMonthlyHistoricalAverage(byYear, historicalYears, months) {
+  return months.map((month) => {
     const vals = historicalYears
       .map((y) => byYear[y]?.filter((r) => r.month === month).map((r) => r.total) || [])
       .flat();
     return average(vals);
   });
+}
 
-  const data2022 = months.map((m) => {
-    const match = (byYear[2022] || []).find((r) => r.month === m);
-    return match ? match.total : null;
+function attachControls() {
+  chartButtons.forEach((btn) => {
+    btn.addEventListener('click', () => switchChart(btn.dataset.view));
   });
+}
 
-  destroyChart('comparison');
-  charts.comparison = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: months.map((m) => new Date(2022, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' })),
-      datasets: [
-        {
-          label: 'Media histórica',
-          data: monthlyHistoricalAvg,
-          borderColor: '#1d976c',
-          backgroundColor: 'rgba(29, 151, 108, 0.12)',
-          tension: 0.25,
-          fill: true,
-          pointRadius: 3,
-          pointBackgroundColor: '#1d976c'
-        },
-        {
-          label: 'Año 2022',
-          data: data2022,
-          borderColor: '#c31432',
-          backgroundColor: 'rgba(195, 20, 50, 0.12)',
-          tension: 0.25,
-          fill: true,
-          pointRadius: 3,
-          pointBackgroundColor: '#c31432'
+function switchChart(view) {
+  currentView = view;
+  chartButtons.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+  chartDescription.textContent = chartHints[view];
+  renderChart(view, cachedRecords);
+}
+
+function renderChart(view, records) {
+  destroyChart('main');
+  const ctx = document.getElementById('main-chart');
+  const byYear = groupBy(records, 'year');
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const historicalYears = Object.keys(byYear).filter((y) => Number(y) !== 2022);
+  const monthlyHistoricalAvg = computeMonthlyHistoricalAverage(byYear, historicalYears, months);
+
+  const chartBuilders = {
+    time: () => {
+      const labels = records.map((r) => `${r.year}-${String(r.month).padStart(2, '0')}`);
+      const totals = records.map((r) => r.total);
+      return {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Total embalsado (hm³)',
+            data: totals,
+            borderColor: '#0a6ebd',
+            backgroundColor: 'rgba(10, 110, 189, 0.12)',
+            tension: 0.25,
+            fill: true,
+            pointRadius: 2.5,
+            pointBackgroundColor: '#0a6ebd'
+          }]
         }
-      ]
+      };
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          ticks: { callback: (val) => `${val} hm³` },
-          grid: { color: 'rgba(82, 117, 138, 0.15)' }
-        },
-        x: {
-          grid: { display: false }
+    comparison: () => {
+      const data2022 = months.map((m) => {
+        const match = (byYear[2022] || []).find((r) => r.month === m);
+        return match ? match.total : null;
+      });
+      return {
+        type: 'line',
+        data: {
+          labels: months.map((m) => new Date(2022, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' })),
+          datasets: [
+            {
+              label: 'Media histórica',
+              data: monthlyHistoricalAvg,
+              borderColor: '#1d976c',
+              backgroundColor: 'rgba(29, 151, 108, 0.12)',
+              tension: 0.25,
+              fill: true,
+              pointRadius: 3,
+              pointBackgroundColor: '#1d976c'
+            },
+            {
+              label: 'Año 2022',
+              data: data2022,
+              borderColor: '#c31432',
+              backgroundColor: 'rgba(195, 20, 50, 0.12)',
+              tension: 0.25,
+              fill: true,
+              pointRadius: 3,
+              pointBackgroundColor: '#c31432'
+            }
+          ]
         }
-      },
-      plugins: {
-        legend: { display: true },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ${formatter.format(ctx.parsed.y)} hm³`
+      };
+    },
+    monthly: () => {
+      const data2022 = months.map((m) => {
+        const match = (byYear[2022] || []).find((r) => r.month === m);
+        return match ? match.total : null;
+      });
+      return {
+        type: 'bar',
+        data: {
+          labels: months.map((m) => new Date(2022, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' })),
+          datasets: [
+            {
+              label: 'Media histórica',
+              data: monthlyHistoricalAvg,
+              backgroundColor: 'rgba(29, 151, 108, 0.45)',
+              borderColor: '#1d976c',
+              borderWidth: 1
+            },
+            {
+              label: '2022',
+              data: data2022,
+              backgroundColor: 'rgba(10, 110, 189, 0.55)',
+              borderColor: '#0a6ebd',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          scales: {
+            x: { stacked: false },
+            y: { stacked: false, ticks: { callback: (val) => `${val} hm³` } }
           }
+        }
+      };
+    }
+  };
+
+  const baseOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        ticks: {
+          callback: (val) => `${val} hm³`
+        },
+        grid: { color: 'rgba(82, 117, 138, 0.15)' }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { autoSkip: true, maxTicksLimit: 12 }
+      }
+    },
+    plugins: {
+      legend: { display: true },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `${ctx.dataset.label}: ${formatter.format(ctx.parsed.y)} hm³`
         }
       }
     }
-  });
+  };
+
+  const config = chartBuilders[view]();
+  config.options = { ...baseOptions, ...(config.options || {}) };
+
+  charts.main = new Chart(ctx, config);
 }
 
 function destroyChart(key) {
