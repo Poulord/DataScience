@@ -23,28 +23,12 @@ Dashboard web en HTML, CSS y JavaScript que analiza la serie temporal de agua em
    ```bash
    pip install -r requirements.txt
    ```
-
-## Servir el dashboard en `http://localhost:8000`
-El CSV se lee vía `fetch`, y los navegadores bloquean la lectura de ficheros locales por CORS. Por eso necesitamos un servidor HTTP sencillo. Usamos el puerto 8000 porque es el estándar para desarrollo y evita conflictos con servicios del sistema.
-
-### Opción recomendada (script dedicado)
-Desde la raíz del repo, con el entorno virtual activo:
-```bash
-python serve.py  # usa host 0.0.0.0 y puerto 8000 por defecto
-# saldrá un mensaje: "Sirviendo ... en http://0.0.0.0:8000"
-```
-Luego abre [http://localhost:8000/](http://localhost:8000/) en el navegador. Si no funciona:
-- Asegúrate de que el comando sigue en ejecución (la terminal debe mostrar el mensaje anterior).
-- Comprueba que no haya otro proceso usando el puerto 8000 o cámbialo con `--port 8010`.
-- Verifica que estás en la raíz del proyecto para que `data/` e `index.html` se sirvan correctamente.
-
-### Opción rápida con la librería estándar
-```bash
-python -m http.server 8000 --bind 0.0.0.0
-```
-El parámetro `--bind 0.0.0.0` expone el servidor a localhost y soluciona el error de "conexión rechazada" si el servidor no estaba escuchando.
-
-Mantén la carpeta `data/` en la misma raíz que `index.html` para que la carga del CSV funcione correctamente.
+3. Levanta un servidor estático para evitar bloqueos de CORS al leer el CSV:
+   ```bash
+   python -m http.server 8000
+   # luego visita http://localhost:8000/
+   ```
+4. Mantén la carpeta `data/` en la misma raíz que `index.html` para que la carga del CSV funcione correctamente.
 
 ## Lógica de sequía
 - Se calcula la media histórica mensual (excluyendo 2022).
