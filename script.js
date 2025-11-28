@@ -355,6 +355,8 @@ function renderChart(view, records) {
             {
               label: 'Últimos 12 meses',
               data: recentRecords.map((r) => r.total),
+              label: `Año ${latestYear || 'actual'}`,
+              data: dataCurrent,
               backgroundColor: 'rgba(10, 110, 189, 0.55)',
               borderColor: '#0a6ebd',
               borderWidth: 1
