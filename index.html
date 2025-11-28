@@ -69,6 +69,49 @@
       <p class="chart-hint" id="chart-description">Curva mensual del volumen total embalsado.</p>
     </section>
 
+    <section class="powerbi-section" aria-label="Vistas de Power BI">
+      <div class="section-header between">
+        <div>
+          <p class="eyebrow">Integración con Power BI</p>
+          <h2>Accede a las pestañas del informe</h2>
+          <p class="section-subtitle">Elige la vista y, si estás en Power BI Service, pega el iframe de publicación para verla aquí mismo.</p>
+        </div>
+        <div class="chart-controls compact" role="group" aria-label="Cambiar pestaña de Power BI">
+          <button class="control-btn active" data-pbi-btn="entendimiento">Entendimiento de los datos</button>
+          <button class="control-btn" data-pbi-btn="diferencia">¿Qué embalse tiene mayor diferencia entre su máximo y mínimo?</button>
+          <button class="control-btn" data-pbi-btn="sequia">¿Posibilidad de Sequía?</button>
+          <button class="control-btn" data-pbi-btn="prediccion">Predicción Hidrográfica 12 meses</button>
+        </div>
+      </div>
+      <div class="pbi-panels">
+        <div class="pbi-panel active" data-pbi-panel="entendimiento">
+          <div class="pbi-placeholder">
+            <p class="pbi-title">Entendimiento de los datos</p>
+            <p>Inserta aquí el iframe público de la pestaña “Entendimiento de los datos”. Si prefieres, abre directamente el .pbix:</p>
+            <a class="pill" href="Notebook/AB%20FINAL_Terminado.pbix" download>Descargar Power BI</a>
+          </div>
+        </div>
+        <div class="pbi-panel" data-pbi-panel="diferencia">
+          <div class="pbi-placeholder">
+            <p class="pbi-title">¿Qué embalse tiene mayor diferencia entre su máximo y mínimo?</p>
+            <p>Usa esta pestaña para visualizar el rango de cada embalse y contrastar máximos y mínimos históricos.</p>
+          </div>
+        </div>
+        <div class="pbi-panel" data-pbi-panel="sequia">
+          <div class="pbi-placeholder">
+            <p class="pbi-title">¿Posibilidad de Sequía?</p>
+            <p>Inserta el iframe de la sección con los umbrales de sequía y la lectura del punto de control.</p>
+          </div>
+        </div>
+        <div class="pbi-panel" data-pbi-panel="prediccion">
+          <div class="pbi-placeholder">
+            <p class="pbi-title">Predicción Hidrográfica 12 meses</p>
+            <p>Agrega aquí la pestaña de Prophet con el escenario a 12 meses y su interpretación.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="info compact">
       <div>
         <h3>Sobre los datos</h3>

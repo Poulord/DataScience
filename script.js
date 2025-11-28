@@ -31,6 +31,8 @@ const insights = {
 
 const chartDescription = document.getElementById('chart-description');
 const chartButtons = document.querySelectorAll('[data-view]');
+const pbiButtons = document.querySelectorAll('[data-pbi-btn]');
+const pbiPanels = document.querySelectorAll('[data-pbi-panel]');
 
 const chartHints = {
   time: 'Curva mensual de toda la serie disponible.',
@@ -129,6 +131,7 @@ function renderDashboard(records) {
   updateInsights(extra, risk);
 
   attachControls();
+  attachPbiControls();
   switchChart('time');
 }
 
@@ -264,6 +267,12 @@ function attachControls() {
   });
 }
 
+function attachPbiControls() {
+  pbiButtons.forEach((btn) => {
+    btn.addEventListener('click', () => switchPbi(btn.dataset.pbiBtn));
+  });
+}
+
 function switchChart(view) {
   currentView = view;
   chartButtons.forEach((btn) => {
@@ -271,6 +280,15 @@ function switchChart(view) {
   });
   chartDescription.textContent = chartHints[view];
   renderChart(view, cachedRecords);
+}
+
+function switchPbi(tab) {
+  pbiButtons.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.pbiBtn === tab);
+  });
+  pbiPanels.forEach((panel) => {
+    panel.classList.toggle('active', panel.dataset.pbiPanel === tab);
+  });
 }
 
 function renderChart(view, records) {

@@ -213,6 +213,68 @@ a { color: inherit; }
   font-size: 0.95rem;
 }
 
+.powerbi-section {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 18px 16px 22px;
+  box-shadow: var(--shadow);
+  border: 1px solid #e2edf5;
+  margin-bottom: 20px;
+}
+
+.chart-controls.compact {
+  max-width: 460px;
+  justify-content: flex-end;
+}
+
+.chart-controls.compact .control-btn {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.pbi-panels {
+  margin-top: 10px;
+}
+
+.pbi-panel {
+  display: none;
+  background: linear-gradient(180deg, rgba(10, 110, 189, 0.04), rgba(10, 110, 189, 0.01));
+  border: 1px dashed #c8e4fa;
+  border-radius: var(--radius);
+  padding: 18px 16px;
+}
+
+.pbi-panel.active {
+  display: block;
+}
+
+.pbi-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.pbi-title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #0a6ebd;
+  color: #fdfefe;
+  border-radius: 999px;
+  text-decoration: none;
+  width: fit-content;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(10, 110, 189, 0.18);
+}
+
 .info {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
