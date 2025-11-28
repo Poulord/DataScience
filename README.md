@@ -2,6 +2,11 @@
 
 Dashboard web en HTML, CSS y JavaScript que analiza la serie temporal de agua embalsada en la Comunidad de Madrid (dataset en `data/df_embalses_medio_limpio.csv`) y calcula un indicador heurístico de riesgo de sequía para 2022.
 
+Esta web sirve como apoyo visual para entender el análisis realizado en la asignatura **BIG DATA ANALYTICS & VISUALIZATION (SEPT. TECH INMERSION)** del año 2025.
+
+- Profesor: **José Francisco Ibañez**
+- Alumno: **Pablo García Ollero**
+
 ## Estructura del proyecto
 - `index.html`: estructura y componentes del dashboard.
 - `styles.css`: estilos en tonos azules, tarjetas y paneles responsivos.
