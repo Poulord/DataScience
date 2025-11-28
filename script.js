@@ -98,8 +98,24 @@ function parseMonth(value) {
 
 function parseNumber(value) {
   if (value === undefined || value === null || value === '') return NaN;
-  const cleaned = String(value).replace(/\./g, '').replace(',', '.');
-  return Number.parseFloat(cleaned);
+  const str = String(value).trim();
+  const hasComma = str.includes(',');
+  const hasDot = str.includes('.');
+
+  let normalized = str;
+
+  if (hasComma && hasDot) {
+    // Formato estilo EE.UU.: comas como miles y punto decimal (ej. 1,234.56)
+    normalized = str.replace(/,/g, '');
+  } else if (hasComma) {
+    // Formato europeo: punto como miles, coma decimal (ej. 1.234,56)
+    normalized = str.replace(/\./g, '').replace(',', '.');
+  } else {
+    // Solo punto decimal o número limpio
+    normalized = str.replace(/,/g, '');
+  }
+
+  return Number.parseFloat(normalized);
 }
 
 function sumEmbalses(row) {
