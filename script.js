@@ -33,9 +33,9 @@ const chartDescription = document.getElementById('chart-description');
 const chartButtons = document.querySelectorAll('[data-view]');
 
 const chartHints = {
-  time: 'Curva mensual de los últimos 12 registros disponibles.',
+  time: 'Curva mensual de toda la serie disponible.',
   comparison: 'Media histórica del mismo mes frente al dato real de los últimos 12 registros.',
-  monthly: 'Barras comparando la media histórica frente a los últimos 12 meses disponibles.'
+  monthly: 'Barras comparando la media histórica frente al año más reciente completo.'
 };
 
 const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -287,11 +287,26 @@ function renderChart(view, records) {
     const val = monthlyHistoricalAvg[r.month - 1];
     return Number.isNaN(val) ? null : val;
   });
+  const historicalByMonth = monthlyHistoricalAvg.map((v) => (Number.isNaN(v) ? null : v));
+  const orderedLabels = records
+    .slice()
+    .sort((a, b) => (a.year === b.year ? a.month - b.month : a.year - b.year))
+    .map((r) => `${r.year}-${String(r.month).padStart(2, '0')}`);
+  const orderedTotals = records
+    .slice()
+    .sort((a, b) => (a.year === b.year ? a.month - b.month : a.year - b.year))
+    .map((r) => r.total);
+
+  const latestYearByMonth = months.map((m) => {
+    const match = (byYear[latestYear] || []).find((r) => r.month === m);
+    return match ? match.total : null;
+  });
+  const monthLabelsShort = months.map((m) => new Date(latestYear || 2000, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' }));
 
   const chartBuilders = {
     time: () => {
-      const labels = recentLabels;
-      const totals = recentRecords.map((r) => r.total);
+      const labels = orderedLabels;
+      const totals = orderedTotals;
       return {
         type: 'line',
         data: {
@@ -343,20 +358,18 @@ function renderChart(view, records) {
       return {
         type: 'bar',
         data: {
-          labels: recentLabels,
+          labels: monthLabelsShort,
           datasets: [
             {
               label: 'Media histórica',
-              data: historicalForRecent,
+              data: historicalByMonth,
               backgroundColor: 'rgba(29, 151, 108, 0.45)',
               borderColor: '#1d976c',
               borderWidth: 1
             },
             {
-              label: 'Últimos 12 meses',
-              data: recentRecords.map((r) => r.total),
-              label: `Año ${latestYear || 'actual'}`,
-              data: dataCurrent,
+              label: latestYear ? `${latestYear}` : 'Año reciente',
+              data: latestYearByMonth,
               backgroundColor: 'rgba(10, 110, 189, 0.55)',
               borderColor: '#0a6ebd',
               borderWidth: 1
