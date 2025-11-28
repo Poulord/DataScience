@@ -299,6 +299,22 @@ footer {
   color: var(--muted);
 }
 
+.footer-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.footer-links a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .section-header {
     align-items: flex-start;

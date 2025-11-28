@@ -33,9 +33,9 @@ const chartDescription = document.getElementById('chart-description');
 const chartButtons = document.querySelectorAll('[data-view]');
 
 const chartHints = {
-  time: 'Curva mensual del volumen total embalsado.',
-  comparison: 'Superposición de la media histórica y los valores del año más reciente para detectar desviaciones.',
-  monthly: 'Barras comparando la media histórica frente a los meses disponibles del último año.'
+  time: 'Curva mensual de los últimos 12 registros disponibles.',
+  comparison: 'Media histórica del mismo mes frente al dato real de los últimos 12 registros.',
+  monthly: 'Barras comparando la media histórica frente a los últimos 12 meses disponibles.'
 };
 
 const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -43,6 +43,12 @@ const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'juli
 let charts = {};
 let cachedRecords = [];
 let currentView = 'time';
+
+function getRecentRecords(records, count = 12) {
+  if (!Array.isArray(records)) return [];
+  const sorted = [...records].sort((a, b) => (a.year === b.year ? a.month - b.month : a.year - b.year));
+  return sorted.slice(-count);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   loadCsv();
@@ -199,8 +205,9 @@ function percentile(arr, p) {
 }
 
 function computeMonthlyHistoricalAverage(byYear, historicalYears, months) {
+  const yearsToUse = historicalYears.length ? historicalYears : Object.keys(byYear);
   return months.map((month) => {
-    const vals = historicalYears
+    const vals = yearsToUse
       .map((y) => byYear[y]?.filter((r) => r.month === month).map((r) => r.total) || [])
       .flat();
     return average(vals);
@@ -274,11 +281,17 @@ function renderChart(view, records) {
   const latestYear = getLatestYear(byYear);
   const historicalYears = Object.keys(byYear).filter((y) => Number(y) !== latestYear);
   const monthlyHistoricalAvg = computeMonthlyHistoricalAverage(byYear, historicalYears, months);
+  const recentRecords = getRecentRecords(records, 12);
+  const recentLabels = recentRecords.map((r) => `${String(r.year).slice(-2)}-${new Date(r.year, r.month - 1, 1).toLocaleDateString('es-ES', { month: 'short' })}`);
+  const historicalForRecent = recentRecords.map((r) => {
+    const val = monthlyHistoricalAvg[r.month - 1];
+    return Number.isNaN(val) ? null : val;
+  });
 
   const chartBuilders = {
     time: () => {
-      const labels = records.map((r) => `${r.year}-${String(r.month).padStart(2, '0')}`);
-      const totals = records.map((r) => r.total);
+      const labels = recentLabels;
+      const totals = recentRecords.map((r) => r.total);
       return {
         type: 'line',
         data: {
@@ -297,18 +310,14 @@ function renderChart(view, records) {
       };
     },
     comparison: () => {
-      const dataCurrent = months.map((m) => {
-        const match = (byYear[latestYear] || []).find((r) => r.month === m);
-        return match ? match.total : null;
-      });
       return {
         type: 'line',
         data: {
-          labels: months.map((m) => new Date(latestYear || 2022, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' })),
+          labels: recentLabels,
           datasets: [
             {
               label: 'Media histórica',
-              data: monthlyHistoricalAvg,
+              data: historicalForRecent,
               borderColor: '#1d976c',
               backgroundColor: 'rgba(29, 151, 108, 0.12)',
               tension: 0.25,
@@ -317,8 +326,8 @@ function renderChart(view, records) {
               pointBackgroundColor: '#1d976c'
             },
             {
-              label: `Año ${latestYear || 'actual'}`,
-              data: dataCurrent,
+              label: 'Últimos 12 meses',
+              data: recentRecords.map((r) => r.total),
               borderColor: '#c31432',
               backgroundColor: 'rgba(195, 20, 50, 0.12)',
               tension: 0.25,
@@ -331,23 +340,21 @@ function renderChart(view, records) {
       };
     },
     monthly: () => {
-      const dataCurrent = months.map((m) => {
-        const match = (byYear[latestYear] || []).find((r) => r.month === m);
-        return match ? match.total : null;
-      });
       return {
         type: 'bar',
         data: {
-          labels: months.map((m) => new Date(latestYear || 2022, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' })),
+          labels: recentLabels,
           datasets: [
             {
               label: 'Media histórica',
-              data: monthlyHistoricalAvg,
+              data: historicalForRecent,
               backgroundColor: 'rgba(29, 151, 108, 0.45)',
               borderColor: '#1d976c',
               borderWidth: 1
             },
             {
+              label: 'Últimos 12 meses',
+              data: recentRecords.map((r) => r.total),
               label: `Año ${latestYear || 'actual'}`,
               data: dataCurrent,
               backgroundColor: 'rgba(10, 110, 189, 0.55)',
