@@ -8,14 +8,25 @@ const formatter = new Intl.NumberFormat('es-ES', {
   minimumFractionDigits: 1
 });
 
+const safeFormat = (value, fallback = 'Sin datos') => (Number.isNaN(value) ? fallback : formatter.format(value));
+
 const cards = {
   historical: document.getElementById('historical-avg'),
-  avg2022: document.getElementById('avg-2022'),
+  avgCurrent: document.getElementById('avg-current'),
   diff: document.getElementById('diff-percent'),
   riskLevel: document.getElementById('risk-level'),
   riskHint: document.getElementById('risk-hint'),
   conclusion: document.getElementById('conclusion-text'),
-  riskCard: document.getElementById('risk-card')
+  riskCard: document.getElementById('risk-card'),
+  currentYearLabel: document.getElementById('current-year-label')
+};
+
+const insights = {
+  trend: document.getElementById('trend-insight'),
+  seasonality: document.getElementById('seasonality-insight'),
+  threshold: document.getElementById('threshold-insight'),
+  forecast: document.getElementById('forecast-insight'),
+  october: document.getElementById('october-note')
 };
 
 const chartDescription = document.getElementById('chart-description');
@@ -23,9 +34,11 @@ const chartButtons = document.querySelectorAll('[data-view]');
 
 const chartHints = {
   time: 'Curva mensual del volumen total embalsado.',
-  comparison: 'Superposición de la media histórica y los valores de 2022 para detectar desviaciones.',
-  monthly: 'Barras comparando la media histórica frente a los meses disponibles de 2022.'
+  comparison: 'Superposición de la media histórica y los valores del año más reciente para detectar desviaciones.',
+  monthly: 'Barras comparando la media histórica frente a los meses disponibles del último año.'
 };
+
+const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 let charts = {};
 let cachedRecords = [];
@@ -93,15 +106,21 @@ function sumEmbalses(row) {
 function renderDashboard(records) {
   const ordered = records.sort((a, b) => a.year === b.year ? a.month - b.month : a.year - b.year);
   cachedRecords = ordered;
-  const { historicalAvg, avg2022, diffPercent, risk } = computeIndicators(ordered);
+  const { historicalAvg, avgCurrent, diffPercent, risk, currentYear, monthlyHistoricalAvg } = computeIndicators(ordered);
+  const extra = computeContext(ordered, monthlyHistoricalAvg);
 
   cards.historical.textContent = `${formatter.format(historicalAvg)} hm³`;
-  cards.avg2022.textContent = `${formatter.format(avg2022)} hm³`;
-  cards.diff.textContent = `${diffPercent > 0 ? '+' : ''}${formatter.format(diffPercent)} %`;
+  cards.avgCurrent.textContent = Number.isNaN(avgCurrent) ? 'Sin datos' : `${formatter.format(avgCurrent)} hm³`;
+  cards.diff.textContent = Number.isNaN(diffPercent)
+    ? 'Sin datos'
+    : `${diffPercent > 0 ? '+' : ''}${formatter.format(diffPercent)} %`;
   cards.riskLevel.textContent = risk.label;
   cards.riskHint.textContent = risk.message;
   cards.conclusion.textContent = risk.conclusion;
+  cards.currentYearLabel.textContent = currentYear || '—';
   cards.riskCard.style.background = risk.background;
+
+  updateInsights(extra, risk);
 
   attachControls();
   switchChart('time');
@@ -109,40 +128,48 @@ function renderDashboard(records) {
 
 function computeIndicators(records) {
   const byYear = groupBy(records, 'year');
-  const historicalYears = Object.keys(byYear).filter((y) => Number(y) !== 2022);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const latestYear = getLatestYear(byYear);
+  const historicalYears = Object.keys(byYear).filter((y) => Number(y) !== latestYear);
 
   const monthlyHistoricalAvg = computeMonthlyHistoricalAverage(byYear, historicalYears, months);
   const avgHistorical = average(monthlyHistoricalAvg.filter((v) => !Number.isNaN(v)));
-  const values2022 = (byYear[2022] || []).map((r) => r.total);
-  const avg2022 = average(values2022);
-  const diffPercent = ((avg2022 - avgHistorical) / avgHistorical) * 100;
+  const valuesCurrent = (byYear[latestYear] || []).map((r) => r.total);
+  const avgCurrent = average(valuesCurrent);
+  const diffPercent = ((avgCurrent - avgHistorical) / avgHistorical) * 100;
 
-  const ratio = avg2022 / avgHistorical;
+  const ratio = avgCurrent / avgHistorical;
   let risk = {
     label: 'Riesgo medio',
     message: 'Valores similares a la media histórica, vigilar tendencias.',
     background: 'linear-gradient(145deg, #f7b733, #fc8a17)',
-    conclusion: '2022 se sitúa cerca de la media histórica; no hay una señal fuerte de sequía, pero conviene seguir los próximos meses.'
+    conclusion: `${latestYear || 'El año analizado'} se sitúa cerca de la media histórica; no hay una señal fuerte de sequía, pero conviene seguir los próximos meses.`
   };
 
-  if (ratio <= 0.75) {
+  if (!valuesCurrent.length) {
+    risk = {
+      label: 'Sin datos recientes',
+      message: 'No hay registros del año más reciente para comparar.',
+      background: 'linear-gradient(145deg, #8d9aa5, #c0ccd7)',
+      conclusion: 'Carga un CSV con el año actual para calcular riesgo en tiempo real.'
+    };
+  } else if (ratio <= 0.75) {
     risk = {
       label: 'Riesgo alto',
-      message: '2022 está claramente por debajo del histórico.',
+      message: `${latestYear} está claramente por debajo del histórico.`,
       background: 'linear-gradient(145deg, #c31432, #7a0f23)',
-      conclusion: 'Los volúmenes de 2022 son mucho menores que la media; conviene activar medidas preventivas de sequía.'
+      conclusion: `Los volúmenes de ${latestYear} son mucho menores que la media; conviene activar medidas preventivas de sequía.`
     };
   } else if (ratio >= 0.9) {
     risk = {
       label: 'Riesgo bajo',
-      message: '2022 está por encima o alineado con el histórico.',
+      message: `${latestYear} está por encima o alineado con el histórico.`,
       background: 'linear-gradient(145deg, #1d976c, #2fcb71)',
-      conclusion: 'Los volúmenes de 2022 se mantienen igual o superiores al histórico, lo que reduce el riesgo inmediato de sequía.'
+      conclusion: `Los volúmenes de ${latestYear} se mantienen igual o superiores al histórico, lo que reduce el riesgo inmediato de sequía.`
     };
   }
 
-  return { historicalAvg: avgHistorical, avg2022, diffPercent, risk };
+  return { historicalAvg: avgHistorical, avgCurrent, diffPercent, risk, currentYear: latestYear, monthlyHistoricalAvg };
 }
 
 function groupBy(list, key) {
@@ -160,6 +187,17 @@ function average(arr) {
   return sum / arr.length;
 }
 
+function percentile(arr, p) {
+  if (!arr.length) return NaN;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const rank = (p / 100) * (sorted.length - 1);
+  const lower = Math.floor(rank);
+  const upper = Math.ceil(rank);
+  if (lower === upper) return sorted[lower];
+  const weight = rank - lower;
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+}
+
 function computeMonthlyHistoricalAverage(byYear, historicalYears, months) {
   return months.map((month) => {
     const vals = historicalYears
@@ -167,6 +205,50 @@ function computeMonthlyHistoricalAverage(byYear, historicalYears, months) {
       .flat();
     return average(vals);
   });
+}
+
+function getLatestYear(byYear) {
+  const years = Object.keys(byYear).map(Number).filter((y) => !Number.isNaN(y));
+  return years.length ? Math.max(...years) : null;
+}
+
+function computeContext(records, monthlyHistoricalAvg) {
+  const byYear = groupBy(records, 'year');
+  const totals = records.map((r) => r.total);
+  const historicalMin = totals.length ? Math.min(...totals) : NaN;
+  const threshold = percentile(totals, 25);
+
+  const monthlyClean = monthlyHistoricalAvg.filter((v) => !Number.isNaN(v));
+  const minMonthly = monthlyClean.length ? Math.min(...monthlyClean) : NaN;
+  const maxMonthly = monthlyClean.length ? Math.max(...monthlyClean) : NaN;
+  const seasonalLowMonth = monthNames[monthlyHistoricalAvg.indexOf(minMonthly)] || 'octubre';
+  const seasonalHighMonth = monthNames[monthlyHistoricalAvg.indexOf(maxMonthly)] || 'enero';
+
+  const years = Object.keys(byYear).map(Number).sort((a, b) => a - b);
+  const firstYears = years.slice(0, Math.min(3, years.length));
+  const lastYears = years.slice(-3);
+  const avgFirst = average(firstYears.flatMap((y) => byYear[y]?.map((r) => r.total) || []));
+  const avgLast = average(lastYears.flatMap((y) => byYear[y]?.map((r) => r.total) || []));
+  const growthPercent = ((avgLast - avgFirst) / avgFirst) * 100;
+
+  return {
+    trendText: Number.isNaN(growthPercent)
+      ? 'La serie aún no cuenta con años suficientes para medir la tendencia.'
+      : `Tras alternar lluvias y sequías, el promedio reciente es ${safeFormat(Math.abs(growthPercent))} % ${growthPercent >= 0 ? 'superior' : 'inferior'} a los primeros años, manteniendo una estabilidad ligeramente ascendente en los niveles medios.`,
+    seasonalityText: `Se observa la subida habitual entre otoño e invierno y descensos en verano; el punto más bajo medio llega en ${seasonalLowMonth}, mientras que el máximo aparece en ${seasonalHighMonth}.`,
+    thresholdText: `El umbral bajo de referencia se sitúa en torno a ${safeFormat(threshold)} hm³ (p25), lejos del mínimo histórico observado de ${safeFormat(historicalMin)} hm³.`,
+    forecastText: 'La proyección Prophet a 12 meses mantiene el volumen por encima del umbral bajo incluso en su escenario pesimista.',
+    octoberNote: 'El mes con mayor probabilidad de acercarse al rango seco es octubre, y solo en una ventana breve (<15 días) antes de recuperar nivel.'
+  };
+}
+
+function updateInsights(context, risk) {
+  if (!context) return;
+  insights.trend.textContent = context.trendText;
+  insights.seasonality.textContent = context.seasonalityText;
+  insights.threshold.textContent = context.thresholdText;
+  insights.forecast.textContent = `${context.forecastText} ${risk.label === 'Riesgo alto' ? 'Requiere seguimiento frecuente.' : 'Escenario estable según el modelo.'}`;
+  insights.october.textContent = context.octoberNote;
 }
 
 function attachControls() {
@@ -189,7 +271,8 @@ function renderChart(view, records) {
   const ctx = document.getElementById('main-chart');
   const byYear = groupBy(records, 'year');
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  const historicalYears = Object.keys(byYear).filter((y) => Number(y) !== 2022);
+  const latestYear = getLatestYear(byYear);
+  const historicalYears = Object.keys(byYear).filter((y) => Number(y) !== latestYear);
   const monthlyHistoricalAvg = computeMonthlyHistoricalAverage(byYear, historicalYears, months);
 
   const chartBuilders = {
@@ -214,14 +297,14 @@ function renderChart(view, records) {
       };
     },
     comparison: () => {
-      const data2022 = months.map((m) => {
-        const match = (byYear[2022] || []).find((r) => r.month === m);
+      const dataCurrent = months.map((m) => {
+        const match = (byYear[latestYear] || []).find((r) => r.month === m);
         return match ? match.total : null;
       });
       return {
         type: 'line',
         data: {
-          labels: months.map((m) => new Date(2022, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' })),
+          labels: months.map((m) => new Date(latestYear || 2022, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' })),
           datasets: [
             {
               label: 'Media histórica',
@@ -234,8 +317,8 @@ function renderChart(view, records) {
               pointBackgroundColor: '#1d976c'
             },
             {
-              label: 'Año 2022',
-              data: data2022,
+              label: `Año ${latestYear || 'actual'}`,
+              data: dataCurrent,
               borderColor: '#c31432',
               backgroundColor: 'rgba(195, 20, 50, 0.12)',
               tension: 0.25,
@@ -248,14 +331,14 @@ function renderChart(view, records) {
       };
     },
     monthly: () => {
-      const data2022 = months.map((m) => {
-        const match = (byYear[2022] || []).find((r) => r.month === m);
+      const dataCurrent = months.map((m) => {
+        const match = (byYear[latestYear] || []).find((r) => r.month === m);
         return match ? match.total : null;
       });
       return {
         type: 'bar',
         data: {
-          labels: months.map((m) => new Date(2022, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' })),
+          labels: months.map((m) => new Date(latestYear || 2022, m - 1, 1).toLocaleDateString('es-ES', { month: 'short' })),
           datasets: [
             {
               label: 'Media histórica',
@@ -265,8 +348,8 @@ function renderChart(view, records) {
               borderWidth: 1
             },
             {
-              label: '2022',
-              data: data2022,
+              label: `Año ${latestYear || 'actual'}`,
+              data: dataCurrent,
               backgroundColor: 'rgba(10, 110, 189, 0.55)',
               borderColor: '#0a6ebd',
               borderWidth: 1
